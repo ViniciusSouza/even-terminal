@@ -1,62 +1,83 @@
-# Even Terminal
+# Even Terminal with extensible CLI integrations
 
-`even-terminal` is designed to be used with the Even App.
+This repository is an independent implementation based on the JavaScript
+published in
+[`@evenrealities/even-terminal@0.10.4`](https://www.npmjs.com/package/@evenrealities/even-terminal).
+It preserves the Even App and G2 bridge while establishing an extensible
+interface for AI coding CLI integrations.
 
-> Building glasses-native apps instead of mirroring your laptop? See [@evenrealities/even_hub_sdk](https://www.npmjs.com/package/@evenrealities/even_hub_sdk).
+The main goals are:
 
-Supports macOS, Linux, Windows.
+- Add GitHub Copilot as a supported CLI integration.
+- Define a typed contract that makes additional providers easier to add.
+- Keep provider-specific SDK, session, permission, and event logic isolated.
+- Preserve compatibility with the existing Claude, Claude Sync, and Codex
+  integrations.
+- Maintain a reproducible baseline for comparing future npm releases.
 
----
+This is not the official Even Realities source repository. The original
+TypeScript sources and tests were not included in the published npm artifact.
+The upstream usage documentation is retained below where it remains applicable.
 
-## Requirements
+## Project status
 
-- **Node.js 18+** — check with `node --version`. Install from [nodejs.org](https://nodejs.org), or `brew install node` (macOS), or your distro's package manager (Linux).
-- An **Even Realities G2** + **R1 ring**, paired through the Even app (iOS/Android).
-- Optional but recommended: a [Tailscale](https://tailscale.com) account signed in on both your laptop and phone — gives you a stable private network without needing the public-tunnel providers below.
+| Area | Status |
+|------|--------|
+| npm 0.10.4 source reconstruction | Complete |
+| Typed `CliIntegration` contract and registry | Complete |
+| Claude, Claude Sync, and Codex compatibility | Preserved |
+| GitHub Copilot integration | Planned |
+| Independent npm release | Not published |
 
----
+## Integration architecture
 
-## Install
+CLI integrations implement `CliIntegration` from
+`src/integrations/contracts.ts` and are registered through
+`CliIntegrationRegistry`.
+
+Each integration owns its provider-specific responsibilities:
+
+- Session creation, listing, resumption, and history.
+- Streaming text and tool events.
+- Permission and user-input requests.
+- Cancellation and status reporting.
+- SDK or CLI lifecycle management.
+
+Adding an integration requires a contract-compliant adapter and an explicit
+registry entry. Shared HTTP routes interact only with the interface instead of
+depending directly on a provider SDK.
+
+## Build and run this implementation
+
+```bash
+git clone https://github.com/ViniciusSouza/even-terminal.git
+cd even-terminal
+npm install
+npm test
+npm install -g .
+even-terminal --version
+```
+
+The editable runtime modules live under `src/` and build into `dist/`.
+TypeScript compiles the reconstructed JavaScript in `allowJs` mode, allowing
+new modules to use TypeScript while preserving the recovered ESM behavior.
+
+## Official npm package
+
+To use the official published package instead of this implementation:
 
 ```bash
 npm install -g @evenrealities/even-terminal
 ```
 
-Verify the install:
+> Building glasses-native apps instead of mirroring your laptop? See
+> [@evenrealities/even_hub_sdk](https://www.npmjs.com/package/@evenrealities/even_hub_sdk).
 
-```bash
-even-terminal --version
-```
+## Requirements
 
-Update to the latest release:
-
-```bash
-npm install -g @evenrealities/even-terminal@latest
-```
-
----
-
-## Development from the npm artifact
-
-This workspace was reconstructed from the JavaScript published in
-`@evenrealities/even-terminal@0.10.4`. The editable runtime modules live under
-`src/` and build back into `dist/`; the original unpublished TypeScript sources
-and test suite are not part of the npm package.
-
-```bash
-npm install
-npm test
-```
-
-`npm run build` uses TypeScript in `allowJs` mode so the recovered ESM modules
-remain behaviorally equivalent while new source modules can be added
-incrementally.
-
-CLI integrations implement the typed `CliIntegration` contract in
-`src/integrations/contracts.ts` and are registered through
-`CliIntegrationRegistry`. Adding an integration requires a contract-compliant
-adapter and one explicit registry entry. Provider-specific session and SDK code
-remains isolated in its own directory.
+- **Node.js 18+**. Check with `node --version`.
+- An **Even Realities G2** and **R1 ring**, paired through the Even app.
+- Optional: Tailscale on the laptop and phone for a stable private connection.
 
 ---
 
@@ -511,7 +532,11 @@ For anything else: `even-terminal --verbose --log-file ./debug.log`, reproduce, 
 
 ---
 
-## Changelog
+## Upstream changelog
+
+The entries below were retained from the `@evenrealities/even-terminal`
+0.10.4 npm artifact. Changes specific to this repository are tracked through
+its Git history and releases.
 
 ### 0.10.3
 
@@ -599,4 +624,6 @@ messages between codex cli and glasses
 
 ## License
 
-MIT
+The upstream README distributed with `@evenrealities/even-terminal@0.10.4`
+declares the project as MIT licensed. This repository retains that declaration
+for the reconstructed upstream code.
