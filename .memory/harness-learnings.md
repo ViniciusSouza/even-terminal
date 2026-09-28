@@ -41,3 +41,15 @@
 - Occurrences: 1
 - First seen: 2026-06-17
 - Last seen: 2026-06-17
+
+## L-004: Docker bind mounts require Git safe-directory configuration
+
+- Phase: implement
+- Dimension: behaviour
+- Scope: Dockerfile, compose.yaml
+- Pattern: The container runs as UID 1000 while Docker Desktop can present the `/workspace` bind mount with different ownership, causing Git to reject the repository as dubious even when files are writable.
+- Guidance: Keep `/workspace` in Git's system-level `safe.directory` configuration in the runtime image. After Dockerfile changes, verify with `docker run --rm -v "${PWD}:/workspace" -w /workspace <image> git status --short`.
+- Confidence: low
+- Occurrences: 1
+- First seen: 2026-09-28
+- Last seen: 2026-09-28
