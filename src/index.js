@@ -10,6 +10,7 @@ import { removeInstancePidfile, writeInstancePidfile } from "./startup/instance.
 import { startExposeProvider } from "./expose/run.js";
 import { installTimestampLogging } from "./logger.js";
 import { redactTokenQueryParam } from "./http-log.js";
+import { stopCopilotClient } from "./copilot/client.js";
 // ── Config ─────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT ?? "3456", 10);
 const TOKEN = process.env.BRIDGE_TOKEN ?? randomBytes(16).toString("hex");
@@ -97,10 +98,27 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
     console.error(`[server] UNHANDLED REJECTION: ${reason}`);
 });
-function shutdown() {
+function cleanupSync() {
     stopCodexAppServer();
     removeInstancePidfile();
 }
-process.on("exit", shutdown);
-process.on("SIGINT", () => { shutdown(); process.exit(0); });
-process.on("SIGTERM", () => { shutdown(); process.exit(0); });
+let shuttingDown = false;
+async function shutdown(signal) {
+    if (shuttingDown)
+        return;
+    shuttingDown = true;
+    cleanupSync();
+    try {
+        const errors = await stopCopilotClient();
+        for (const err of errors) {
+            console.error(`[copilot] Failed to stop client: ${err.message}`);
+        }
+    }
+    catch (err) {
+        console.error(`[copilot] Failed to stop client: ${err.message}`);
+    }
+    process.exit(signal === "SIGINT" ? 130 : 0);
+}
+process.on("exit", cleanupSync);
+process.on("SIGINT", () => { void shutdown("SIGINT"); });
+process.on("SIGTERM", () => { void shutdown("SIGTERM"); });

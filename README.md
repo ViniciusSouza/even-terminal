@@ -26,7 +26,7 @@ The upstream usage documentation is retained below where it remains applicable.
 | npm 0.10.4 source reconstruction | Complete |
 | Typed `CliIntegration` contract and registry | Complete |
 | Claude, Claude Sync, and Codex compatibility | Preserved |
-| GitHub Copilot integration | Planned |
+| GitHub Copilot integration | Implemented |
 | Independent npm release | Not published |
 
 ## Integration architecture
@@ -75,7 +75,7 @@ npm install -g @evenrealities/even-terminal
 
 ## Requirements
 
-- **Node.js 18+**. Check with `node --version`.
+- **Node.js 20.19+**. Check with `node --version`.
 - An **Even Realities G2** and **R1 ring**, paired through the Even app.
 - Optional: Tailscale on the laptop and phone for a stable private connection.
 
@@ -110,6 +110,7 @@ even-terminal --port 8080
 even-terminal --token mytoken123
 even-terminal --name my-laptop
 even-terminal --provider codex
+even-terminal --provider copilot
 even-terminal --lan
 even-terminal --allow-cors
 even-terminal --claude-use-system-cli
@@ -125,8 +126,8 @@ even-terminal --expose ngrok
 ## How it works
 
 even-terminal runs a local HTTP server on `:3456` (configurable through setup,
-`even-terminal config`, or `--port`), spawns your AI agent (Claude Code or
-Codex) as a child process, captures its streaming output, renders it onto the
+`even-terminal config`, or `--port`), connects to your AI agent (Claude Code, Codex, or GitHub Copilot), captures its
+streaming output, renders it onto the
 G2's 576×288 canvas, and translates R1 ring gestures back into keyboard events
 for the agent.
 
@@ -135,7 +136,7 @@ The Even app connects to your laptop over your chosen transport. By default the 
 ```
                        ┌──────────────────┐
                        │   your laptop    │
-   [ claude / codex ] ─│   even-terminal  │
+[ claude / codex / copilot ] ─│ even-terminal │
                        │   :3456          │
                        └────────┬─────────┘
                                 │
@@ -173,6 +174,7 @@ Commands:
   even-terminal start
   even-terminal config [key] [value]
   even-terminal complete <shell>
+  even-terminal copilot
 
 Local network options:
   --lan
@@ -187,7 +189,7 @@ Options:
   -t, --token <str>
   -n, --name <str>
   -d, --cwd <path>
-  --provider <name>   claude, claude-sync, codex (default: claude)
+  --provider <name>   claude, claude-sync, codex, copilot (default: claude)
   --config <path>     Use another persistent config file
   --allow-cors        Allow cross-origin browser requests
   --use-original-claude  Use the original Claude SDK provider without terminal/app synchronization
@@ -211,8 +213,8 @@ Examples:
 
 The first-run wizard writes a versioned configuration file with permissions
 `0600` on macOS and Linux. The pairing token remains stable across restarts.
-The wizard stores `claude` or `codex` as the default provider. Claude uses
-Claude Sync by default; pass `--use-original-claude` to opt out.
+The wizard stores `claude`, `codex`, or `copilot` as the default provider.
+Claude uses Claude Sync by default; pass `--use-original-claude` to opt out.
 
 Run the interactive config menu at any time:
 
@@ -365,9 +367,11 @@ session.
 | `claude`      | Claude sessions managed through Agent SDK    | Stable       |
 | `claude-sync` | Shared Claude sessions across CLI and app    | Experimental |
 | `codex`       | Real-time Codex sessions through app-server  | Stable       |
+| `copilot`     | GitHub Copilot sessions through Copilot SDK  | Experimental |
 
-Install and authenticate the corresponding system CLI before using
-`even-terminal claude` or `even-terminal codex`.
+Install and authenticate the corresponding system CLI before using the Claude
+or Codex wrapper commands. The Copilot SDK includes a platform runtime and uses
+the locally logged-in Copilot user by default.
 
 ### Claude
 
@@ -514,6 +518,44 @@ even-terminal codex
 This port belongs to the local Codex app-server. The main Even Terminal HTTP
 port remains controlled by `--port`.
 
+### GitHub Copilot
+
+Start the server with GitHub Copilot selected:
+
+```bash
+even-terminal copilot
+even-terminal --provider copilot
+```
+
+The Copilot integration uses `@github/copilot-sdk` and its bundled platform
+runtime. It reuses authentication from the local Copilot environment and does
+not read or forward a GitHub token directly. If authentication is unavailable,
+install the GitHub Copilot CLI, sign in, and verify the installation:
+
+```bash
+copilot --version
+```
+
+Set `COPILOT_CLI_PATH` to use a specific Copilot CLI executable instead of the
+runtime bundled with the SDK. Set `COPILOT_MODEL` to request a particular model:
+
+```powershell
+$env:COPILOT_CLI_PATH = "C:\path\to\copilot.exe"
+$env:COPILOT_MODEL = "gpt-5"
+even-terminal copilot
+```
+
+Copilot sessions persist through the SDK session store and can be resumed from
+the Even app. Text, tool activity, usage, and user questions stream through the
+same provider-independent bridge used by the other integrations. Reasoning
+content and sub-agent events are not exposed.
+
+Tool operations require an explicit response in the Even app. The current
+integration offers **Allow once** and **Deny**. It does not provide blanket or
+session-wide approval. Unlike the Claude and Codex commands, `even-terminal
+copilot` starts the server with Copilot selected; it does not open a separate
+interactive Copilot terminal.
+
 ---
 
 ## Common problems
@@ -522,7 +564,8 @@ port remains controlled by `--port`.
 |-----------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------------------------------------------|
 | Phone app shows "Server unreachable"                      | Laptop and phone on different transports                | Match: both on Tailscale (`--tailscale`) or both on the same Wi-Fi                       |
 | `EADDRINUSE :3456`                                        | Another even-terminal already running                   | `lsof -i :3456` → kill old one, or pass `--port <other>`                                 |
-| `command not found: claude` or `codex`                   | Agent binary not on `$PATH`                             | Install per the Providers table; verify with `which claude` / `which codex`              |
+| `command not found: claude` or `codex`                   | Agent binary not on `$PATH`                             | Install per the Providers section; verify with `which claude` or `which codex`            |
+| Copilot reports an authentication or runtime error       | No local Copilot login, or an invalid CLI override      | Sign in with Copilot CLI; verify `copilot --version`; check or unset `COPILOT_CLI_PATH`    |
 | Claude SDK sessions behave differently from `claude`    | The SDK-bundled and system Claude versions may differ   | Try `--claude-use-system-cli`; this compatibility workaround is not guaranteed            |
 | `--expose pinggy` hangs                                   | Pinggy edge timing out                                  | Switch to `--expose bore`, `--expose ngrok`, or Tailscale                                |
 | Phone can no longer authenticate after manually changing the token | The app still has the previous token                    | Scan the new QR code or restore the previous token with `even-terminal config token <value>` |

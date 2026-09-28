@@ -5,6 +5,7 @@ import { test } from "node:test";
 
 import express from "express";
 
+import { parseConfig } from "../bin/config.js";
 import {
   getDefaultProvider,
   isProvider,
@@ -17,11 +18,28 @@ import coreRouter, { getProvider } from "../dist/routes/core.js";
 import { fileName, oneLine, truncate } from "../dist/summary-format.js";
 
 test("published providers remain available through the reconstructed build", () => {
-  assert.deepEqual(SUPPORTED_PROVIDERS, ["claude", "claude-sync", "codex"]);
+  assert.deepEqual(
+    SUPPORTED_PROVIDERS,
+    ["claude", "claude-sync", "codex", "copilot"],
+  );
   assert.equal(isProvider("codex"), true);
-  assert.equal(isProvider("copilot"), false);
+  assert.equal(isProvider("copilot"), true);
   assert.equal(parseProvider("claude-sync"), "claude-sync");
   assert.throws(() => parseProvider("unknown"), /Unsupported provider/);
+});
+
+test("persistent configuration accepts every supported provider", () => {
+  for (const provider of SUPPORTED_PROVIDERS) {
+    const config = parseConfig({
+      version: 1,
+      provider,
+      cwd: process.cwd(),
+      network: { mode: "lan" },
+      port: 3456,
+      token: "test-token",
+    });
+    assert.equal(config.provider, provider);
+  }
 });
 
 test("every supported provider is registered with the bridge contract", () => {
@@ -114,6 +132,44 @@ test("interrupt endpoint reports asynchronous integration failures", async () =>
   } finally {
     provider.getStatus = originalGetStatus;
     provider.interrupt = originalInterrupt;
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("question endpoint rejects answers that the provider does not accept", async () => {
+  const provider = getProvider("claude");
+  const originalGetStatus = provider.getStatus;
+  const originalRespondQuestion = provider.respondQuestion;
+  const app = express();
+  app.use(express.json());
+  app.use(coreRouter);
+  const server = createServer(app);
+
+  provider.getStatus = () => ({ state: "busy", provider: "claude" });
+  provider.respondQuestion = () => false;
+
+  try {
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    assert.notEqual(address, null);
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/question-response`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "session",
+          provider: "claude",
+          answer: "invalid",
+        }),
+      },
+    );
+    assert.equal(response.status, 400);
+  } finally {
+    provider.getStatus = originalGetStatus;
+    provider.respondQuestion = originalRespondQuestion;
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
     });

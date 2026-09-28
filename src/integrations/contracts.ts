@@ -2,6 +2,7 @@ export const BUILT_IN_INTEGRATION_NAMES = [
   "claude",
   "claude-sync",
   "codex",
+  "copilot",
 ] as const;
 
 export type BuiltInIntegrationName =

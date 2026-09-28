@@ -6,6 +6,7 @@ import { createClaudeSyncProvider } from "../claude-sync/provider.js";
 import { USE_ORIGINAL_CLAUDE } from "../claude-sync/provider-name.js";
 import { ClaudeSyncTransport } from "../claude-sync/transport.js";
 import { createCodexProvider } from "../codex/provider.js";
+import { createCopilotProvider } from "../copilot/provider.js";
 import { createBuiltInIntegrationRegistry } from "../integrations/built-ins.js";
 // cursor/opencode hidden in 0.8.1 (experimental) — re-enable alongside SUPPORTED_PROVIDERS.
 // import { createCursorProvider } from "../cursor/provider.js";
@@ -51,12 +52,14 @@ const claudeSyncTransport = new ClaudeSyncTransport(emit);
 const claudeProvider = createClaudeProvider(emit);
 const claudeSyncProvider = createClaudeSyncProvider(emit, claudeSyncTransport);
 const codexProvider = createCodexProvider(emit, () => codexClient);
+const copilotProvider = createCopilotProvider(emit);
 // const cursorProvider = createCursorProvider(emit);
 // const opencodeProvider = createOpencodeProvider(emit);
 const providerRegistry = createBuiltInIntegrationRegistry({
     claude: claudeProvider,
     claudeSync: claudeSyncProvider,
     codex: codexProvider,
+    copilot: copilotProvider,
     useOriginalClaude: USE_ORIGINAL_CLAUDE,
 });
 export { codexClient, claudeSyncTransport, emit as emitBridgeMessage };
@@ -181,7 +184,11 @@ router.post("/question-response", (req, res) => {
         res.status(404).json({ error: "Session not found" });
         return;
     }
-    targetProvider.respondQuestion(sessionId, answer || "skip");
+    const accepted = targetProvider.respondQuestion(sessionId, answer || "skip");
+    if (accepted === false) {
+        res.status(400).json({ error: "Question answer was not accepted or no question is pending" });
+        return;
+    }
     res.json({ ok: true });
 });
 // POST /api/interrupt
