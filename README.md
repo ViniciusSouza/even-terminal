@@ -62,6 +62,82 @@ The editable runtime modules live under `src/` and build into `dist/`.
 TypeScript compiles the reconstructed JavaScript in `allowJs` mode, allowing
 new modules to use TypeScript while preserving the recovered ESM behavior.
 
+## Docker
+
+The repository includes a production image, a Compose configuration, and a
+GitHub Actions workflow that publishes Linux `amd64` and `arm64` images to:
+
+```text
+ghcr.io/viniciussouza/even-terminal
+```
+
+Docker defaults to the `copilot` provider. Override `DEFAULT_PROVIDER` to select
+another registered provider, although the initial container support and mounts
+are designed and validated for GitHub Copilot.
+
+Copy the example environment file:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+Set these required values in `.env.docker`:
+
+| Variable | Purpose |
+|----------|---------|
+| `BRIDGE_TOKEN` | Persistent secret used by the Even app |
+| `EVEN_ADVERTISE_HOST` | Laptop LAN address or DNS name reachable by the phone |
+| `PROJECT_PATH` | Host project mounted at `/workspace` |
+| `COPILOT_GITHUB_TOKEN_FILE` | Local file containing a GitHub token |
+
+Authenticate with GitHub CLI on the host, then create the Docker secret file.
+The `.secrets/` directory is excluded from Git and the Docker build context.
+
+Linux and macOS:
+
+```bash
+mkdir -p .secrets
+gh auth token > .secrets/copilot-github-token
+chmod 600 .secrets/copilot-github-token
+```
+
+PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force .secrets | Out-Null
+gh auth token | Set-Content -NoNewline .secrets\copilot-github-token
+```
+
+Build and start locally:
+
+```bash
+docker compose --env-file .env.docker up --build -d
+docker compose --env-file .env.docker logs -f even-terminal
+```
+
+Use the published image without building:
+
+```bash
+docker compose --env-file .env.docker pull
+docker compose --env-file .env.docker up -d
+```
+
+Stop the service:
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+The container listens on all container interfaces while generated connection
+URLs use `EVEN_ADVERTISE_HOST`. This separation prevents the QR code from
+advertising an internal Docker address. The container runs as a non-root user,
+the mounted project remains writable so Copilot can apply approved changes,
+and a named volume preserves Copilot session data across container replacement.
+
+For direct `docker run` usage, authentication can also be supplied through
+`COPILOT_GITHUB_TOKEN`. Prefer `COPILOT_GITHUB_TOKEN_FILE` or a Docker secret
+when possible because environment variables are visible in container metadata.
+
 ## Official npm package
 
 To use the official published package instead of this implementation:

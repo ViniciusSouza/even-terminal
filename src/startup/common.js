@@ -47,6 +47,10 @@ function getInterfaceIp(name) {
 }
 /** Resolve host based on EVEN_HOST_MODE / EVEN_HOST_INTERFACE; exits on failure. */
 export function resolveHost() {
+    const advertisedHost = process.env.EVEN_ADVERTISE_HOST?.trim();
+    if (advertisedHost) {
+        return { label: "Advertised", address: advertisedHost };
+    }
     const mode = process.env.EVEN_HOST_MODE;
     if (mode === "tailscale") {
         const ip = getTailscaleIp();
@@ -75,6 +79,14 @@ export function resolveHost() {
     if (!address)
         console.warn("[server] No private LAN IPv4 address found; listening on 127.0.0.1. Use --interface to select an adapter explicitly.");
     return { label: "LAN", address: address ?? "" };
+}
+export function resolveBindAddress(host, env = process.env) {
+    return env.EVEN_BIND_ADDRESS?.trim() || host.address || "127.0.0.1";
+}
+export function needsLoopbackListener(bindAddress) {
+    return bindAddress !== "127.0.0.1"
+        && bindAddress !== "0.0.0.0"
+        && bindAddress !== "::";
 }
 export function truncPath(p, max) {
     if (p.length <= max)

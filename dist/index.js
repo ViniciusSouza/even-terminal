@@ -5,7 +5,7 @@ import cors from "cors";
 import eventsRouter from "./routes/events.js";
 import coreRouter, { claudeSyncTransport, emitBridgeMessage, INFO_AUTH_ERROR } from "./routes/core.js";
 import { handleHookRequest } from "./claude-sync/hook-receiver.js";
-import { CODEX_APP_SERVER_PORT, printServerBanner, resolveHost, stopCodexAppServer } from "./startup/common.js";
+import { CODEX_APP_SERVER_PORT, needsLoopbackListener, printServerBanner, resolveBindAddress, resolveHost, stopCodexAppServer } from "./startup/common.js";
 import { removeInstancePidfile, writeInstancePidfile } from "./startup/instance.js";
 import { startExposeProvider } from "./expose/run.js";
 import { installTimestampLogging } from "./logger.js";
@@ -15,7 +15,7 @@ import { stopCopilotClient } from "./copilot/client.js";
 const PORT = parseInt(process.env.PORT ?? "3456", 10);
 const TOKEN = process.env.BRIDGE_TOKEN ?? randomBytes(16).toString("hex");
 const HOST = resolveHost();
-const BIND_ADDRESS = HOST.address || "127.0.0.1";
+const BIND_ADDRESS = resolveBindAddress(HOST);
 // ── App ────────────────────────────────────────────────
 const app = express();
 if (process.env.EVEN_ALLOW_CORS === "1")
@@ -53,9 +53,7 @@ app.use("/api", auth, coreRouter);
 // ── HTTP server + claude-sync WebSocket transport ──────
 const httpServer = createServer(app);
 claudeSyncTransport.attach(httpServer);
-const loopbackServer = BIND_ADDRESS === "127.0.0.1"
-    ? null
-    : createServer(app);
+const loopbackServer = needsLoopbackListener(BIND_ADDRESS) ? createServer(app) : null;
 if (loopbackServer) {
     claudeSyncTransport.attach(loopbackServer);
     loopbackServer.on("error", (err) => {

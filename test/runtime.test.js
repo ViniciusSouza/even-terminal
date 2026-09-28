@@ -16,6 +16,10 @@ import { redactTokenQueryParam } from "../dist/http-log.js";
 import { CliIntegrationRegistry } from "../dist/integrations/registry.js";
 import coreRouter, { getProvider } from "../dist/routes/core.js";
 import { fileName, oneLine, truncate } from "../dist/summary-format.js";
+import {
+  needsLoopbackListener,
+  resolveBindAddress,
+} from "../dist/startup/common.js";
 
 test("published providers remain available through the reconstructed build", () => {
   assert.deepEqual(
@@ -40,6 +44,23 @@ test("persistent configuration accepts every supported provider", () => {
     });
     assert.equal(config.provider, provider);
   }
+});
+
+test("container binding can differ from the advertised client host", () => {
+  assert.equal(
+    resolveBindAddress(
+      { label: "Advertised", address: "192.168.1.10" },
+      { EVEN_BIND_ADDRESS: "0.0.0.0" },
+    ),
+    "0.0.0.0",
+  );
+  assert.equal(
+    resolveBindAddress({ label: "LAN", address: "192.168.1.10" }, {}),
+    "192.168.1.10",
+  );
+  assert.equal(needsLoopbackListener("0.0.0.0"), false);
+  assert.equal(needsLoopbackListener("127.0.0.1"), false);
+  assert.equal(needsLoopbackListener("192.168.1.10"), true);
 });
 
 test("every supported provider is registered with the bridge contract", () => {

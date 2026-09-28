@@ -1,0 +1,38 @@
+services:
+  even-terminal:
+    image: ${EVEN_TERMINAL_IMAGE:-ghcr.io/viniciussouza/even-terminal:latest}
+    build:
+      context: .
+      target: runtime
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${EVEN_TERMINAL_PORT:-3456}:3456"
+    environment:
+      PORT: "3456"
+      BRIDGE_TOKEN: "${BRIDGE_TOKEN:?Set BRIDGE_TOKEN in .env.docker}"
+      DEFAULT_PROVIDER: "${DEFAULT_PROVIDER:-copilot}"
+      PROJECT_DIR: /workspace
+      EVEN_BIND_ADDRESS: 0.0.0.0
+      EVEN_ADVERTISE_HOST: "${EVEN_ADVERTISE_HOST:?Set EVEN_ADVERTISE_HOST in .env.docker}"
+      COPILOT_HOME: /home/node/.copilot
+      COPILOT_GITHUB_TOKEN_FILE: /run/secrets/copilot_github_token
+      COPILOT_MODEL: "${COPILOT_MODEL:-}"
+    volumes:
+      - type: bind
+        source: "${PROJECT_PATH:-.}"
+        target: /workspace
+      - type: volume
+        source: copilot-data
+        target: /home/node/.copilot
+    secrets:
+      - copilot_github_token
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  copilot-data:
+
+secrets:
+  copilot_github_token:
+    file: "${COPILOT_GITHUB_TOKEN_FILE:?Set COPILOT_GITHUB_TOKEN_FILE in .env.docker}"

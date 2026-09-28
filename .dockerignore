@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.github
+.memory
+test
+coverage
+*.log
+*.tgz
+.env
+.env.*
+!.env.docker.example
+.secrets
