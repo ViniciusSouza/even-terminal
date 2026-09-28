@@ -1,0 +1,59 @@
+{
+  "name": "@evenrealities/even-terminal",
+  "version": "0.10.4",
+  "type": "module",
+  "description": "Even Terminal — AI Coding CLI on Smart Glasses & Flutter App",
+  "bin": {
+    "even-terminal": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "bin/config.js",
+    "src/claude-sync/wrapper.mjs",
+    "src/claude-sync/hook-poster.mjs",
+    "dist/",
+    "!dist/index-evenhub.js",
+    "!dist/routes/audio.js",
+    "!dist/asr.js",
+    "!dist/at-file.js",
+    "!dist/startup/evenhub.js"
+  ],
+  "scripts": {
+    "postinstall": "node -e \"const fs=require('fs');const p=require('path');let d;try{d=p.dirname(require.resolve('node-pty/package.json'))}catch{process.exit(0)}for(const a of ['darwin-arm64','darwin-x64','linux-x64','linux-arm64']){const f=p.join(d,'prebuilds',a,'spawn-helper');if(fs.existsSync(f)){try{fs.chmodSync(f,0o755)}catch{}}}\"",
+    "clean": "node scripts/clean.mjs",
+    "clean:public": "node scripts/clean-public.mjs",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "build:evenhub": "npm run build && npm run clean:public && npm run copy-frontend",
+    "build:bundle": "esbuild src/index.js --bundle --platform=node --format=esm --outfile=dist/index.mjs --packages=external",
+    "start:prod": "node dist/index.mjs",
+    "copy-frontend": "node -e \"const fs=require('fs');fs.cpSync('../frontend/dist','public',{recursive:true})\"",
+    "test": "npm run build && node --test",
+    "prepack": "npm run build",
+    "pack:evenhub": "V=$(node -p \"require('./package.json').version\") && npm run build:evenhub && node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.files=['bin/','dist/','public/'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n');\" && npm pack --ignore-scripts && git checkout package.json && mv evenrealities-even-terminal-$V.tgz even-terminal-evenhub-$V.tgz"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.231",
+    "@anthropic-ai/sdk": "^0.116.0",
+    "@bomb.sh/tab": "^0.0.14",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "node-pty": "^1.1.0",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.20.0",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
