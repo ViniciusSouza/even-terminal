@@ -29,3 +29,15 @@
 - Occurrences: 1
 - First seen: 2026-09-28
 - Last seen: 2026-09-28
+
+## L-003: Copilot SDK needs a declaration boundary
+
+- Phase: verify
+- Dimension: maintainability
+- Scope: tsconfig.json, src/copilot/**, @github/copilot-sdk
+- Pattern: Adding the Copilot SDK exposed incompatible transitive `vscode-jsonrpc` declarations under TypeScript 5.9, and callback payload aliases were defined internally but not exported from the package root.
+- Guidance: Keep `skipLibCheck` enabled for third-party declaration compatibility and derive Copilot callback request/response types from `SessionConfig` handler signatures instead of importing unexported aliases. Run `npm run build` after SDK upgrades.
+- Confidence: low
+- Occurrences: 1
+- First seen: 2026-06-17
+- Last seen: 2026-06-17

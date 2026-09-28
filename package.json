@@ -34,12 +34,13 @@
     "pack:evenhub": "V=$(node -p \"require('./package.json').version\") && npm run build:evenhub && node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.files=['bin/','dist/','public/'];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n');\" && npm pack --ignore-scripts && git checkout package.json && mv evenrealities-even-terminal-$V.tgz even-terminal-evenhub-$V.tgz"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19.0"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.231",
     "@anthropic-ai/sdk": "^0.116.0",
     "@bomb.sh/tab": "^0.0.14",
+    "@github/copilot-sdk": "1.0.14",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "node-pty": "^1.1.0",

@@ -38,7 +38,12 @@ const providerNames = [...SUPPORTED_PROVIDERS];
 const configCompletionDefinitions = new Map([
   ["provider", {
     description: "Set the default agent",
-    values: [["claude", "Claude"], ["codex", "Codex"]],
+    values: [
+      ["claude", "Claude"],
+      ["claude-sync", "Claude Sync"],
+      ["codex", "Codex"],
+      ["copilot", "GitHub Copilot"],
+    ],
   }],
   ["cwd", { description: "Set the default project directory" }],
   ["network", {
@@ -248,6 +253,7 @@ function registerCompletionCommands(root) {
   const complete = root.command("complete", "Print shell completion script for bash, zsh, fish, or powershell");
   root.command("claude", "Open Claude connected to a running Even Terminal server");
   root.command("codex", "Open Codex connected to a running Even Terminal server");
+  root.command("copilot", "Start Even Terminal with GitHub Copilot selected");
 
   registerCompletionOptions(root);
   registerCompletionOptions(start);
@@ -338,6 +344,12 @@ registerYargsOptions(yargs(hideBin(process.argv))
   .command(
     "claude [args..]",
     "Run Claude through Even Terminal (--resume supported; other Claude arguments are forwarded without guarantees)",
+  )
+  .command(
+    "copilot",
+    "Start Even Terminal with GitHub Copilot selected",
+    {},
+    (argv) => run({ ...argv, provider: "copilot" }),
   )
   .command("$0", false, {}, run))
   .check((argv) => {
@@ -499,7 +511,8 @@ async function runSetupWizard(configPath, existing = null) {
   const provider = await choose(yellow("[1/4] Default agent"), [
     { value: "claude", label: "Claude Code" },
     { value: "codex", label: "Codex" },
-  ], base.provider === "codex" ? 1 : 0);
+    { value: "copilot", label: "GitHub Copilot" },
+  ], Math.max(0, ["claude", "codex", "copilot"].indexOf(base.provider)));
   if (provider === "claude") {
     console.log("      Claude terminal/app synchronization is enabled by default; use --use-original-claude to opt out.\n");
   }
@@ -535,7 +548,8 @@ async function runConfigMenu(configPath, config) {
       const provider = await choose("Default agent", [
         { value: "claude", label: "Claude Code" },
         { value: "codex", label: "Codex" },
-      ], config.provider === "codex" ? 1 : 0);
+        { value: "copilot", label: "GitHub Copilot" },
+      ], Math.max(0, ["claude", "codex", "copilot"].indexOf(config.provider)));
       next = updateConfig(config, "provider", provider, exposeProviderNames);
       break;
     }

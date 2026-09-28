@@ -14,5 +14,9 @@ export function createBuiltInIntegrationRegistry(options) {
         .register({
         name: "codex",
         integration: options.codex,
+    })
+        .register({
+        name: "copilot",
+        integration: options.copilot,
     });
 }

@@ -34,6 +34,7 @@ const TOP_LEVEL_KEYS = new Set([
   "claude",
 ]);
 const CLAUDE_KEYS = new Set(["useSystemCli", "allowedTools"]);
+const PROVIDERS = new Set(["claude", "claude-sync", "codex", "copilot"]);
 
 export function resolveConfigPath(value) {
   if (!value) return DEFAULT_CONFIG_PATH;
@@ -89,8 +90,10 @@ export function parseConfig(raw, source = "config", exposeProviders = []) {
   if (object.version !== CONFIG_VERSION) {
     throw new Error(`${source}.version must be ${CONFIG_VERSION}`);
   }
-  if (object.provider !== "claude" && object.provider !== "codex") {
-    throw new Error(`${source}.provider must be "claude" or "codex"`);
+  if (!PROVIDERS.has(object.provider)) {
+    throw new Error(
+      `${source}.provider must be one of: ${[...PROVIDERS].join(", ")}`,
+    );
   }
   if (typeof object.cwd !== "string" || !object.cwd.trim()) {
     throw new Error(`${source}.cwd must be a non-empty path`);

@@ -8,6 +8,7 @@ interface BuiltInIntegrationOptions {
   claude: CliIntegration;
   claudeSync: CliIntegration;
   codex: CliIntegration;
+  copilot: CliIntegration;
   useOriginalClaude: boolean;
 }
 
@@ -28,5 +29,9 @@ export function createBuiltInIntegrationRegistry(
     .register({
       name: "codex",
       integration: options.codex,
+    })
+    .register({
+      name: "copilot",
+      integration: options.copilot,
     });
 }
