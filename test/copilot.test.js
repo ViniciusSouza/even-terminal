@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import { createCopilotClientManager } from "../dist/copilot/client.js";
@@ -80,6 +83,42 @@ test("Copilot client manager shares startup and stops the active client", async 
   assert.equal(starts, 1);
   assert.deepEqual(await manager.stop(), []);
   assert.equal(stops, 1);
+});
+
+test("Copilot client reads GitHub authentication from a token file", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "even-terminal-copilot-"));
+  const tokenFile = join(directory, "token");
+  writeFileSync(tokenFile, "test-token\n");
+  const previousFile = process.env.COPILOT_GITHUB_TOKEN_FILE;
+  const previousToken = process.env.COPILOT_GITHUB_TOKEN;
+  process.env.COPILOT_GITHUB_TOKEN_FILE = tokenFile;
+  process.env.COPILOT_GITHUB_TOKEN = "ignored-token";
+  let options;
+
+  try {
+    const manager = createCopilotClientManager((received) => {
+      options = received;
+      return {
+        async start() {},
+        async stop() { return []; },
+      };
+    });
+    await manager.getClient();
+    assert.equal(options.gitHubToken, "test-token");
+    await manager.stop();
+  } finally {
+    if (previousFile === undefined) {
+      delete process.env.COPILOT_GITHUB_TOKEN_FILE;
+    } else {
+      process.env.COPILOT_GITHUB_TOKEN_FILE = previousFile;
+    }
+    if (previousToken === undefined) {
+      delete process.env.COPILOT_GITHUB_TOKEN;
+    } else {
+      process.env.COPILOT_GITHUB_TOKEN = previousToken;
+    }
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("Copilot client manager stops clients during startup and after startup failure", async () => {

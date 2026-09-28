@@ -1,9 +1,24 @@
 import { CopilotClient, RuntimeConnection, } from "@github/copilot-sdk";
+import { readFileSync } from "node:fs";
 function clientOptions() {
     const cliPath = process.env.COPILOT_CLI_PATH?.trim();
+    const tokenFile = process.env.COPILOT_GITHUB_TOKEN_FILE?.trim();
+    let gitHubToken = process.env.COPILOT_GITHUB_TOKEN?.trim();
+    if (tokenFile) {
+        try {
+            gitHubToken = readFileSync(tokenFile, "utf8").trim();
+        }
+        catch (error) {
+            throw new Error(`Cannot read COPILOT_GITHUB_TOKEN_FILE "${tokenFile}": ${error instanceof Error ? error.message : String(error)}`);
+        }
+        if (!gitHubToken) {
+            throw new Error(`COPILOT_GITHUB_TOKEN_FILE "${tokenFile}" is empty`);
+        }
+    }
     return {
         mode: "copilot-cli",
         logLevel: process.env.EVEN_TERMINAL_DEBUG ? "debug" : "error",
+        ...(gitHubToken ? { gitHubToken } : {}),
         ...(cliPath
             ? { connection: RuntimeConnection.forStdio({ path: cliPath }) }
             : {}),
