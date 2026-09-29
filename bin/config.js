@@ -279,6 +279,9 @@ export function resolveStartupEnvironment(config, flags, inheritedEnv = {}) {
     inheritedEnv.DEFAULT_PROVIDER,
     config.provider,
   );
+  output.EVEN_TERMINAL_FORCE_PROVIDER = flags.force
+    ? output.DEFAULT_PROVIDER
+    : inheritedEnv.EVEN_TERMINAL_FORCE_PROVIDER;
 
   output.EVEN_HOST_MODE = inheritedEnv.EVEN_HOST_MODE;
   output.EVEN_HOST_INTERFACE = inheritedEnv.EVEN_HOST_INTERFACE;

@@ -31,3 +31,31 @@ export function getDefaultProvider(): BuiltInIntegrationName {
 
   return parseProvider(env, "DEFAULT_PROVIDER");
 }
+
+/**
+ * Provider forced by `--force` (server-wide), or `null` when the client's
+ * requested provider should be honored as usual.
+ */
+export function getForcedProvider(): BuiltInIntegrationName | null {
+  const env = process.env.EVEN_TERMINAL_FORCE_PROVIDER;
+  if (!env) {
+    return null;
+  }
+
+  return parseProvider(env, "EVEN_TERMINAL_FORCE_PROVIDER");
+}
+
+/**
+ * Resolves the provider to use for a request: the forced provider always
+ * wins, otherwise the client-requested value, falling back to the default.
+ */
+export function resolveProviderName(value?: unknown): BuiltInIntegrationName {
+  const forced = getForcedProvider();
+  if (forced) {
+    return forced;
+  }
+
+  return value !== undefined && value !== null && value !== ""
+    ? parseProvider(value)
+    : getDefaultProvider();
+}

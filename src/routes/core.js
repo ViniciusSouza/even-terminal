@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getDefaultProvider, isProvider, parseProvider, SUPPORTED_PROVIDERS } from "../session.js";
+import { isProvider, resolveProviderName, SUPPORTED_PROVIDERS } from "../session.js";
 import { broadcast, pushMessage, getMessages } from "./events.js";
 import { createClaudeProvider } from "../claude/provider.js";
 import { createClaudeSyncProvider } from "../claude-sync/provider.js";
@@ -64,8 +64,7 @@ const providerRegistry = createBuiltInIntegrationRegistry({
 });
 export { codexClient, claudeSyncTransport, emit as emitBridgeMessage };
 export function getProvider(name) {
-    const resolved = name ? parseProvider(name) : getDefaultProvider();
-    return providerRegistry.get(resolved);
+    return providerRegistry.get(resolveProviderName(name));
 }
 router.use((req, res, next) => {
     for (const provider of [req.query.provider, req.body?.provider]) {
@@ -79,7 +78,7 @@ router.use((req, res, next) => {
 // GET /api/sessions — list resumable sessions
 router.get("/sessions", async (req, res) => {
     const providerName = req.query.provider;
-    const resolvedProvider = providerName ? parseProvider(providerName) : getDefaultProvider();
+    const resolvedProvider = resolveProviderName(providerName);
     const cwd = req.query.cwd;
     const provider = getProvider(resolvedProvider);
     const limit = Number(req.query.limit) || 10;
@@ -137,8 +136,7 @@ router.post("/prompt", async (req, res) => {
         return;
     }
     try {
-        const p = provider || getDefaultProvider();
-        const targetProvider = getProvider(p);
+        const targetProvider = getProvider(provider);
         const effectiveCwd = sessionId ? undefined : cwd ?? process.env.PROJECT_DIR;
         const result = await targetProvider.prompt(sessionId, text, effectiveCwd);
         res.status(202).json({ ok: true, sessionId: result.sessionId, provider: result.provider });
@@ -236,7 +234,7 @@ router.get("/status", (req, res) => {
 router.get("/messages", (req, res) => {
     const after = parseInt(req.query.after) || 0;
     const sessionId = req.query.sessionId;
-    const providerName = req.query.provider;
+    const providerName = resolveProviderName(req.query.provider);
     if (!sessionId) {
         res.status(400).json({ error: "Missing 'sessionId'" });
         return;
@@ -253,7 +251,7 @@ router.get("/messages", (req, res) => {
 // GET /api/debug/thread/:id — raw app-server / SDK output for debugging
 router.get("/debug/thread/:id", async (req, res) => {
     const id = req.params.id;
-    const provider = req.query.provider || getDefaultProvider();
+    const provider = resolveProviderName(req.query.provider);
     try {
         if (provider === "codex") {
             const thread = await codexClient.threadRead(id, true);
@@ -278,7 +276,7 @@ router.get("/debug/thread/:id", async (req, res) => {
 // GET /api/debug/status/:id — test status detection against real data
 router.get("/debug/status/:id", async (req, res) => {
     const id = req.params.id;
-    const providerName = req.query.provider || getDefaultProvider();
+    const providerName = resolveProviderName(req.query.provider);
     const provider = getProvider(providerName);
     try {
         const status = await provider.getSessionStatus(id);
@@ -292,7 +290,7 @@ router.get("/debug/status/:id", async (req, res) => {
 router.get("/sessions/:id/history", async (req, res) => {
     const id = req.params.id;
     const limit = Math.min(parseInt(req.query.limit) || 10, 10);
-    const providerName = req.query.provider || getDefaultProvider();
+    const providerName = resolveProviderName(req.query.provider);
     const provider = getProvider(providerName);
     try {
         const history = await provider.getHistory(id, limit);
