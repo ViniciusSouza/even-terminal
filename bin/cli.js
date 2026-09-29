@@ -96,6 +96,11 @@ const optionDefinitions = {
     choices: providerNames,
     describe: "Default AI provider",
   },
+  force: {
+    type: "boolean",
+    default: undefined,
+    describe: "Ignore any provider requested by the client; always use --provider",
+  },
   config: {
     type: "string",
     requiresArg: true,
